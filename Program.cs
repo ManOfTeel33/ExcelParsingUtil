@@ -10,128 +10,156 @@ namespace ExcelParsingUtil
 {
     public static class ExcelUtils
     {
-        // Read Excel data to generic list - overloaded version 1
-        public static IList<T> GetDataToList<T>(byte[] excelArr, Func<IList<string>, IList<string>, T> addProductData)
+        public static IList<T> GetDataToList<T>(SpreadsheetDocument document, Func<IList<string>, IList<string>, int, T> addData, bool hasHeaders = true)
         {
-            return GetDataToList<T>(excelArr, "", addProductData);
+            return GetDataToList<T>(document, "", addData, hasHeaders);
         }
 
-        // Read Excel data to generic list - overloaded version 2
-        public static IList<T> GetDataToList<T>(byte[] excelArr, string sheetName, Func<IList<string>, IList<string>, T> addData)
+        public static IList<T> GetDataToList<T>(SpreadsheetDocument document, string sheetName, Func<IList<string>, IList<string>, int, T> addData, bool hasHeaders = true)
         {
             var resultList = new List<T>();
-            Stream stream = new MemoryStream(excelArr);
 
-            // Open the spreadsheet document for read-only access
-            using (var document = SpreadsheetDocument.Open(stream, false))
+            var wsPart = GetWorksheetPartFromDocument(document, sheetName);
+            if (wsPart == null)
+            {                  
+                throw new Exception("No worksheet.");
+            }
+
+            var firstRow = GetRow(wsPart, 0);
+            var columnLetters = GetCellLetters(firstRow);
+            var columnNames = columnLetters;
+            if (hasHeaders)
             {
-                var wbPart = document.WorkbookPart;
-                var sheet = wbPart.Workbook.Descendants<Sheet>().FirstOrDefault(s =>
-                    string.IsNullOrWhiteSpace(sheetName) || s.Name == sheetName);
-                var wsPart = sheet != null ? (WorksheetPart)wbPart.GetPartById(sheet.Id) : null;
-                if (wsPart == null)
-                {                  
-                    throw new Exception("No worksheet.");
-                }
+                columnNames = GetCellValueAsColumnName(document, firstRow);
+            }
 
-                // List to hold custom column names for mapping data to columns (index-free)
-                var columnNames = new List<string>();
-
-                // List to hold column address letters for handling empty cells
-                var columnLetters = new List<string>();
-
-                // Iterate cells of custom header row
-                foreach (Cell cell in wsPart.Worksheet.Descendants<Row>().ElementAt(0))
-                {
-                    // Get custom column names
-                    // Remove spaces, symbols (except underscore), and make lower cases and for all values in columnNames list                 
-                    columnNames.Add(Regex.Replace(GetCellValue(document, cell), @"[^A-Za-z0-9_]", "").ToLower());
-
-                    // Get built-in column names by extracting letters from cell references
-                    columnLetters.Add(GetColumnAddress(cell.CellReference));
-                }
-
-                foreach (var row in GetUsedRows(document, wsPart))
-                {
-                    // Used for sheet row data to be added
-                    var rowData = new List<string>();
-
-                    rowData.AddRange(GetCellsForRow(row, columnLetters).Select(cell => GetCellValue(document, cell)));
-
-                    // Add to the list
-                    resultList.Add(addData(rowData, columnNames));
-                }
+            foreach (var row in GetUsedRows(document, wsPart))
+            {
+                var rowData = new List<string>();
+                rowData.AddRange(GetCellsForRow(row, columnLetters).Select(cell => GetCellValue(document, cell)));
+                resultList.Add(addData(rowData, columnNames, int.Parse(row.RowIndex)));
             }
             return resultList;
         }
 
-        private static string GetCellValue(SpreadsheetDocument document, Cell cell)
+        public static SpreadsheetDocument OpenDocumentFromByteArray(byte[] excelArr, bool editable = false)
+        {
+            Stream stream = new MemoryStream(excelArr);
+            return SpreadsheetDocument.Open(stream, editable);
+        }
+
+        public static WorksheetPart GetWorksheetPartFromDocument(SpreadsheetDocument document, string sheetName)
+        {
+            var wbPart = document.WorkbookPart;
+            var sheet = wbPart.Workbook.Descendants<Sheet>().FirstOrDefault(s =>
+                string.IsNullOrWhiteSpace(sheetName) || s.Name == sheetName);
+           return sheet != null ? (WorksheetPart)wbPart.GetPartById(sheet.Id) : null;
+        }
+
+        public static IList<string> GetCellValueAsColumnName(SpreadsheetDocument document, Row row)
+        {
+            return (
+                from Cell cell
+                in row
+                select Regex.Replace(
+                GetCellValue(document, cell),
+                @"[^A-Za-z0-9_]",
+                ""
+                ).ToLower()
+            )
+                .TakeWhile(
+                    columnName => columnName.Length >= 1
+                )
+                .ToList();
+        }
+
+        public static IList<string> GetCellLetters(Row row)
+        {
+            return (from Cell cell in row select GetColumnAddress(cell.CellReference)).ToList();
+        }
+
+        public static string GetCellValue(SpreadsheetDocument document, Cell cell)
         {
             if (cell == null)
             {
                 return null;
             }
-            var value = cell.InnerText;
+            var value = cell?.CellValue?.InnerText ?? cell.InnerText;
 
-            // Process values particularly for those data types
-            if (cell.DataType != null)
+            if (cell.DataType == null)
             {
-                switch (cell.DataType.Value)
-                {
-                    // Obtain values from shared string table
-                    case CellValues.SharedString:
-                        var sstPart = document.WorkbookPart.GetPartsOfType<SharedStringTablePart>().FirstOrDefault();
-                        if (sstPart != null)
-                        {
-                            value = sstPart.SharedStringTable.ChildElements[int.Parse(value)].InnerText;
-                        }
-                        break;
-                }
+                return value;
+            }
+            switch (cell.DataType.Value)
+            {
+                case CellValues.SharedString:
+                    var sstPart = document.WorkbookPart.GetPartsOfType<SharedStringTablePart>().FirstOrDefault();
+                    if (sstPart != null)
+                    {
+                        value = sstPart.SharedStringTable.ChildElements[int.Parse(value)].InnerText;
+                    }
+                    break;
             }
             return value;
         }
 
-        private static IEnumerable<Row> GetUsedRows(SpreadsheetDocument document, WorksheetPart wsPart)
+        public static bool HasAnyRows(WorksheetPart wsPart)
         {
-            // Iterate all rows except the first one which should be column headers
-            return from row in wsPart.Worksheet.Descendants<Row>().Skip(1) let hasValue = row.Descendants<Cell>().Any(cell => !string.IsNullOrEmpty(GetCellValue(document, cell))) where hasValue select row;
+            return wsPart.Worksheet.Descendants<Row>().Any();
         }
 
-        private static IEnumerable<Cell> GetCellsForRow(Row row, List<string> columnLetters)
+        public static Row GetRow(WorksheetPart wsPart, int rowNumber)
         {
-            var workIdx = 0;        
+            return wsPart.Worksheet.Descendants<Row>().ElementAt(rowNumber);
+        }
+
+        private static IEnumerable<Row> GetUsedRows(SpreadsheetDocument document, WorksheetPart wsPart)
+        {
+            return 
+                from row 
+                in wsPart.Worksheet.Descendants<Row>().Skip(1) 
+                let hasValue = row.Descendants<Cell>().Any(
+                    cell => !string.IsNullOrEmpty(GetCellValue(document, cell))
+                    ) 
+                where hasValue 
+                select row;
+        }
+
+        public static IEnumerable<Cell> GetCellsForRow(Row row, IList<string> columnLetters)
+        {
+            var workIdx = 0;
+            var emptyCell = new Cell { DataType = null, CellValue = new CellValue(string.Empty) };
             foreach (var cell in row.Descendants<Cell>())
             {
-                // Get letter of the cell address
                 var cellLetter = GetColumnAddress(cell.CellReference);
-
-                // Get column index of the matched cell
                 var currentActualIdx = columnLetters.IndexOf(cellLetter);
-                var emptyCell = new Cell { DataType = null, CellValue = new CellValue(string.Empty) };
-
-                // Add empty cell if work index smaller than actual index
+                if (currentActualIdx < 0)
+                {
+                    break;
+                }
                 for (; workIdx < currentActualIdx; workIdx++)
                 {
                     yield return emptyCell;
                 }
-
+                
                 yield return cell;
                 workIdx++;
 
-                if (cell == row.LastChild)
+                if (cell != row.LastChild) continue;
+                for (; workIdx < columnLetters.Count(); workIdx++)
                 {
-                    //Append empty cells to enumerable. 
-                    for (; workIdx < columnLetters.Count(); workIdx++)
-                    {
-                        yield return emptyCell;
-                    }
-                }          
+                    yield return emptyCell;
+                }
             }                
         }
 
+        public static void RemoveRow(Row row)
+        {
+            row.Remove();
+        }
+        
         private static string GetColumnAddress(string cellReference)
         {
-            // Create a regular expression to get column address letters
             var regex = new Regex("[A-Za-z]+");
             var match = regex.Match(cellReference);
             return match.Value;
