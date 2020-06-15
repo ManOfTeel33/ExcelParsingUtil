@@ -1,0 +1,12 @@
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/bin/Debug/netcoreapp3.1/ExcelParsingUtil.deps.json
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/bin/Debug/netcoreapp3.1/ExcelParsingUtil.runtimeconfig.json
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/bin/Debug/netcoreapp3.1/ExcelParsingUtil.runtimeconfig.dev.json
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/bin/Debug/netcoreapp3.1/ExcelParsingUtil.dll
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/bin/Debug/netcoreapp3.1/ExcelParsingUtil.pdb
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/obj/Debug/netcoreapp3.1/ExcelParsingUtil.csprojAssemblyReference.cache
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/obj/Debug/netcoreapp3.1/ExcelParsingUtil.csproj.CoreCompileInputs.cache
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/obj/Debug/netcoreapp3.1/ExcelParsingUtil.AssemblyInfoInputs.cache
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/obj/Debug/netcoreapp3.1/ExcelParsingUtil.AssemblyInfo.cs
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/obj/Debug/netcoreapp3.1/ExcelParsingUtil.dll
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/obj/Debug/netcoreapp3.1/ExcelParsingUtil.pdb
+/Users/dannyteel/Dev/C#/ExcelParsingUtil/ExcelParsingUtil/obj/Debug/netcoreapp3.1/ExcelParsingUtil.genruntimeconfig.cache
