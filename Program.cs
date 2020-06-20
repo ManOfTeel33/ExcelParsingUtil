@@ -8,7 +8,7 @@ using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace ExcelParsingUtil
 {
-    public static class ExcelUtils
+    public static class ExcelParse
     {
         public static IList<T> GetDataToList<T>(SpreadsheetDocument document, Func<IList<string>, IList<string>, int, T> addData, bool hasHeaders = true)
         {
