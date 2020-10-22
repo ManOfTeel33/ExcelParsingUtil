@@ -39,6 +39,14 @@
             "DocumentFormat.OpenXml": {
               "target": "Package",
               "version": "[2.11.0, )"
+            },
+            "Microsoft.AspNetCore.Mvc.Core": {
+              "target": "Package",
+              "version": "[2.2.5, )"
+            },
+            "Microsoft.Net.Http.Server": {
+              "target": "Package",
+              "version": "[1.1.4, )"
             }
           },
           "imports": [
